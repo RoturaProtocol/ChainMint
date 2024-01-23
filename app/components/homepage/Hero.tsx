@@ -10,7 +10,7 @@ export default function Hero() {
     // <section className="bg-black py-24 mt-0">
     <section className="pt-12 pb-24 mt-0">
       <Image
-        src="/images/hero.png"
+        src="/images/hero.svg"
         className="mx-auto"
         width={700}
         height={500}

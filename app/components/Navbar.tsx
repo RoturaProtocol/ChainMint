@@ -9,7 +9,7 @@ export default function Navbar() {
     <nav className="container px-4 mt-2 mx-auto flex items-center bg-white h-20">
       <div className="flex flex-wrap sm:flex-nowrap items-center w-full justify-center gap-x-6 sm:justify-between">
         <div className="flex items-center gap-x-2">
-          <Image src="/logo.png" width={80} height={80} alt="logo" />
+          <Image src="/logo.svg" width={80} height={80} alt="logo" />
           <div className="text-4xl font-bold text-black">TuraInscription</div>
         </div>
         <div className="flex items-center gap-x-2">
