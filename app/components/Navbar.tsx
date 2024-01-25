@@ -13,7 +13,7 @@ export default function Navbar() {
           <div className="text-4xl font-bold text-black">TuraInscription</div>
         </div>
         <div className="flex items-center gap-x-2">
-          <Link target="_about" href="https://twitter.com/BoxingTokenEth">
+          <Link target="_about" href="https://twitter.com/Tura_Blockchain">
             <Image
               src="/icons/twitter.svg"
               width={35}
@@ -21,7 +21,7 @@ export default function Navbar() {
               alt="BoxingToken's Twitter"
             />
           </Link>
-          <Link target="_about" href="https://t.me/boxingtoken">
+          <Link target="_about" href="https://github.com/RoturaProtocol">
             <Image
               src="/icons/telegram.svg"
               width={35}
