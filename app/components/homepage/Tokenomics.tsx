@@ -36,7 +36,7 @@ export default function Tokenomics() {
         <Card
           bg="linear-gradient(135deg, rgb(255, 194, 196), rgb(246, 194, 255))"
           title="Name"
-          subTitle="BoxingToken"
+          subTitle="TUI"
           desc={`Just as Mark Zuckerberg revolutionized social
           connectivity with Facebook's algorithmic prowess,
           the name "BoxingToken" resonates with a
