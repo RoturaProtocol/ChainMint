@@ -37,7 +37,7 @@ export default function Details() {
         getUserAddress();
     }, []);
 
-    const handleInscribe = async () => {
+    const handleTransaction = async () => {
         const inputData = (document.getElementById(
             "inputValue"
         ) as HTMLInputElement)?.value;
@@ -64,12 +64,12 @@ export default function Details() {
                     </div>
                     <div className="flex gap-4 w-full sm:w-[700px] flex-wrap sm:justify-between sm:flex-nowrap">
                         <button className="w-full gap-4 bg-teal-500 hover:bg-teal-700 border-teal-500 hover:border-teal-700 border-4 text-white py-1 px-2 rounded" type="button"
-                            onClick={handleInscribe}
+                            onClick={handleTransaction}
                         >
-                            Inscribe Button
+                            Send Transaction
                         </button>
                         <button className="w-full gap-4 bg-teal-500 hover:bg-teal-700 border-teal-500 hover:border-teal-700 border-4 text-white py-1 px-2 rounded" type="button">
-                            Query Button
+                            Query 
                         </button>
                     </div>
                 </div>
