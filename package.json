@@ -9,10 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@signumjs/core": "^1.0.0-rc.75",
+    "@signumjs/crypto": "^1.0.0-rc.75",
+    "@signumjs/wallets": "^1.0.0-rc.75",
     "@types/node": "20.4.9",
     "@types/react": "18.2.19",
     "@types/react-dom": "18.2.7",
     "autoprefixer": "10.4.14",
+    "axios": "^1.6.7",
+    "crypto": "^1.0.1",
     "eslint": "8.46.0",
     "eslint-config-next": "13.4.13",
     "lucide-react": "^0.263.1",
