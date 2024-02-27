@@ -1,22 +1,19 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios';
-import { LedgerClientFactory,Address } from '@signumjs/core';
+import { LedgerClientFactory } from '@signumjs/core';
 import { GenericExtensionWallet } from '@signumjs/wallets';
-import { PassPhraseGenerator } from "@signumjs/crypto"
-const {generateMasterKeys} = require("@signumjs/crypto");
+const { generateMasterKeys } = require("@signumjs/crypto");
 
-
-
- declare global {
+declare global {
     interface Window {
-        wallet:any,    
-        signumLedger:any,    
-        nostr:any,    
+        wallet: any,
+        signumLedger: any,
+        nostr: any,
     }
 }
-let signumLedger:any = null;
+let signumLedger: any = null;
 const recipientId = "17623970032651210826"
 let feeType = ['Minimum', 'Cheap', 'Standard', 'Priority'];
 
@@ -25,12 +22,14 @@ export default function Details() {
     const [userData, setUserData] = useState<any>('');
     const [userMsg, setUserMsg] = useState<string>('');
     const [transactionDetails, setTransactionDetails] = useState<any>('');
+    const [alertErrorMessage, setAlertErrorMessage] = useState<any>('');
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
     (window as any).wallet = new GenericExtensionWallet();
-    
+
     (window as any).signumLedger = null;
     let walletListener: any = null;
-    
-    
+
     function createLedgerClient(nodeHost: string) {
         console.log('Create Ledger called')
         signumLedger = LedgerClientFactory.createClient({
@@ -52,7 +51,7 @@ export default function Details() {
     function onNetworkChange(args: any) {
         propagateWalletEvent('networkChanged');
         // check if we are still within the same network
-        console.log('args',args)
+        console.log('args', args)
         if (args.networkName === 'Signum-TESTNET') {
             if (!(window as any).wallet.connection) {
                 connectWallet();
@@ -97,17 +96,20 @@ export default function Details() {
                 onPermissionRemoved: onPermissionOrAccountRemoval,
                 onAccountRemoved: onPermissionOrAccountRemoval,
             });
-            console.log('connection.currentNodeHost',connection.currentNodeHost)
+            console.log('connection.currentNodeHost', connection.currentNodeHost)
             createLedgerClient(connection.currentNodeHost);
             propagateWalletEvent('connected');
 
         } catch (error: any) {
             if (error?.name === 'InvalidNetworkError') {
+                let errorMsg = 'The selected network of the wallet does not match the applications required network'
+                alert(errorMsg);
+                setAlertErrorMessage(errorMsg);
+                return;
+            } if (error?.name === 'NotFoundWalletError') {
                 alert(error?.message);
-            } else {
-                if (error?.name === 'NotFoundWalletError') {
-                    alert(error?.message);
-                }
+                setAlertErrorMessage(error?.message);
+                return;
             }
         }
     }
@@ -121,19 +123,12 @@ export default function Details() {
         propagateWalletEvent('disconnected');
     }
 
-    const generator = new PassPhraseGenerator()
-    function generateDefault() {
-        return generator.generatePassPhrase()
-    }
-
     useEffect(() => {
         const walletDetail = async () => {
-            console.log("Secret Phase ==>>>>", (await generateDefault()).join(' '))
-
             try {
                 await connectWallet();
             } catch (error) {
-                console.error('There was a problem with wallet connect:', error);
+                console.log('There was a problem with wallet connect:', error);
             }
         };
 
@@ -146,11 +141,17 @@ export default function Details() {
                 if (userData?.accountId) {
                     const response = await axios.get(`https://europe3.testnet.signum.network/api?requestType=getAccount&account=${userData?.accountId}`);
                     console.log('Account Response: ', response?.data)
-                    setUserDetails(response?.data);
+                    if (response?.data?.errorCode === 5) {
+                        setAlertErrorMessage(response?.data?.errorDescription);
+                        return;
+                    } else {
+                        setUserDetails(response?.data);
+                    }
                 }
-
             } catch (error: any) {
-                console.log('error: ', error)
+                if (error?.name === 'AxiosError') {
+                    return alert(error?.message);
+                }
             }
         };
 
@@ -158,11 +159,13 @@ export default function Details() {
     }, [userData]);
 
     const handleInscribe = async () => {
-  
-
+        if (!userMsg) {
+            return alert('Please enter message');
+        }
+        if (buttonRef.current) {
+            buttonRef.current.disabled = true; // Disable the button
+        }
         try {
- 
-            
             //TODO: Need to remove: before we can send we need to get the private signing key from the user
             // const {publicKey, signPrivateKey} = generateMasterKeys(userDetails.publicKey)
 
@@ -176,10 +179,10 @@ export default function Details() {
             // Now, we execute the transaction
             // within the method the local signing flow is being executed, i.e.
             // the private key is used only locally for signing, but never sent over the network
-        
-            const {unsignedTransactionBytes} = await signumLedger.message.sendMessage({
+
+            const { unsignedTransactionBytes } = await signumLedger.message.sendMessage({
                 recipientId,
-                message:userMsg,
+                message: userMsg,
                 messageIsText: true,
                 feePlanck: selectedFeePlanck,
                 // senderPrivateKey: signPrivateKey,
@@ -192,12 +195,32 @@ export default function Details() {
             });
 
             const transaction = await (window as any).wallet.confirm(unsignedTransactionBytes)
-            console.log('transaction',transaction)
-
-            setTransactionDetails(transaction)
-        } catch (error) {
-            console.error('There was a problem with the send message:', error);
-            alert('There was a problem with the send message. Please try again')
+            console.log('transaction', transaction)
+            if (transaction) {
+                setTransactionDetails(transaction)
+                setUserMsg("")
+                if (buttonRef.current) {
+                    buttonRef.current.disabled = false; // Enable the button after transaction
+                }
+                
+            } else {
+               
+                setUserMsg("Transaction hasn't been completed yet. Please check in your wallet")
+                if (buttonRef.current) {
+                    buttonRef.current.disabled = false; // Enable the button after transaction
+                }
+            }
+        } catch (error: any) {
+            if (buttonRef.current) {
+                buttonRef.current.disabled = false; // Enable the button
+            }
+            if (error?.name === 'NotGrantedWalletError') {
+                return alert('You have cancelled the transaction');
+            } else if(error.name === 'Error' && alertErrorMessage === ''){
+                return alert('Unable to connect to the network. Please select another network or verify your internet connection.');
+            }else {
+                return alert(alertErrorMessage);
+            }
         }
     };
 
@@ -206,10 +229,11 @@ export default function Details() {
             <div className='container mx-auto px-4'>
                 <div className="flex justify-center items-center flex-wrap flex-col gap-4 mt-[30px] mb-5">
                     <div className='shadow-2xl'>
-                        <input className="shadow rounded w-full sm:w-[700px] py-2 px-3" id="inputValue" type="text" value={userMsg} onChange={(e) => { setUserMsg(e?.target?.value) }} />
+                        <input className="shadow rounded w-full sm:w-[700px] py-2 px-3" id="inputValue" type="text" value={userMsg} onChange={(e) => { setUserMsg(e?.target?.value) }} placeholder='Please enter message' />
                     </div>
                     <div className="flex gap-4 w-full sm:w-[700px] flex-wrap sm:justify-between sm:flex-nowrap">
                         <button className="w-full gap-4 bg-teal-500 hover:bg-teal-700 border-teal-500 hover:border-teal-700 border-4 text-white py-1 px-2 rounded" type="button"
+                            ref={buttonRef}
                             onClick={handleInscribe}
                         >
                             Inscribe Button
@@ -219,7 +243,7 @@ export default function Details() {
                         </button>
                     </div>
 
-                    {userDetails &&
+                    {userDetails?.accountRS &&
                         <div>
                             <p>Address: {userDetails?.accountRS}</p>
                         </div>
