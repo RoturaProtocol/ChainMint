@@ -101,6 +101,7 @@ export default function Details() {
             propagateWalletEvent('connected');
 
         } catch (error: any) {
+            console.log('connecting walleterror', error)
             if (error?.name === 'InvalidNetworkError') {
                 let errorMsg = 'The selected network of the wallet does not match the applications required network'
                 alert(errorMsg);
@@ -138,6 +139,7 @@ export default function Details() {
     useEffect(() => {
         const getUserAddress = async () => {
             try {
+
                 if (userData?.accountId) {
                     const response = await axios.get(`https://europe3.testnet.signum.network/api?requestType=getAccount&account=${userData?.accountId}`);
                     console.log('Account Response: ', response?.data)
@@ -149,6 +151,7 @@ export default function Details() {
                     }
                 }
             } catch (error: any) {
+                console.log('account error',error)
                 if (error?.name === 'AxiosError') {
                     return alert(error?.message);
                 }
@@ -202,23 +205,18 @@ export default function Details() {
                 if (buttonRef.current) {
                     buttonRef.current.disabled = false; // Enable the button after transaction
                 }
-                
-            } else {
-               
-                setUserMsg("Transaction hasn't been completed yet. Please check in your wallet")
-                if (buttonRef.current) {
-                    buttonRef.current.disabled = false; // Enable the button after transaction
-                }
             }
         } catch (error: any) {
+            console.log('Error',error)
             if (buttonRef.current) {
                 buttonRef.current.disabled = false; // Enable the button
             }
             if (error?.name === 'NotGrantedWalletError') {
-                return alert('You have cancelled the transaction');
+                return alert('Permission to access the wallet was not granted. Please grant permission and try again.');
             } else if(error.name === 'Error' && alertErrorMessage === ''){
                 return alert('Unable to connect to the network. Please select another network or verify your internet connection.');
             }else {
+              
                 return alert(alertErrorMessage);
             }
         }
