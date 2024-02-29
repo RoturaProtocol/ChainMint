@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import axios from 'axios';
-import { LedgerClientFactory } from '@signumjs/core';
+import { LedgerClientFactory, Address } from '@signumjs/core';
 import { GenericExtensionWallet } from '@signumjs/wallets';
+import { ChainTime } from "@signumjs/util";
 const { generateMasterKeys } = require("@signumjs/crypto");
 
 declare global {
@@ -16,6 +17,11 @@ declare global {
 let signumLedger: any = null;
 const recipientId = "17623970032651210826"
 let feeType = ['Minimum', 'Cheap', 'Standard', 'Priority'];
+const ITEMS_PER_PAGE = 10 // Number of items to display per page
+
+interface Transaction {
+
+}
 
 export default function Details() {
     const [userDetails, setUserDetails] = useState<any>('');
@@ -23,7 +29,12 @@ export default function Details() {
     const [userMsg, setUserMsg] = useState<string>('');
     const [transactionDetails, setTransactionDetails] = useState<any>('');
     const [alertErrorMessage, setAlertErrorMessage] = useState<any>('');
+    const [transactionList, setTransactionList] = useState<Transaction[]>([]);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [totalPages, setTotalPages] = useState<number>(0);
+
     const buttonRef = useRef<HTMLButtonElement>(null);
+    const queryBtnRef = useRef<HTMLButtonElement>(null);
 
     (window as any).wallet = new GenericExtensionWallet();
 
@@ -151,7 +162,7 @@ export default function Details() {
                     }
                 }
             } catch (error: any) {
-                console.log('account error',error)
+                console.log('account error', error)
                 if (error?.name === 'AxiosError') {
                     return alert(error?.message);
                 }
@@ -207,20 +218,118 @@ export default function Details() {
                 }
             }
         } catch (error: any) {
-            console.log('Error',error)
+            console.log('Error', error)
             if (buttonRef.current) {
                 buttonRef.current.disabled = false; // Enable the button
             }
             if (error?.name === 'NotGrantedWalletError') {
                 return alert('Permission to access the wallet was not granted. Please grant permission and try again.');
-            } else if(error.name === 'Error' && alertErrorMessage === ''){
+            } else if (error.name === 'Error' && alertErrorMessage === '') {
                 return alert('Unable to connect to the network. Please select another network or verify your internet connection.');
-            }else {
-              
+            } else {
                 return alert(alertErrorMessage);
             }
         }
     };
+
+    const handleQuery = async () => {
+        if (queryBtnRef.current) {
+            queryBtnRef.current.disabled = true; // Disable the button
+        }
+        try {
+            if (alertErrorMessage === '') {
+                const accountId = Address.create(userDetails?.accountRS).getNumericId()
+                const ledger = LedgerClientFactory.createClient({
+                    nodeHost: "https://europe3.testnet.signum.network"
+                });
+                // here we can explicitly filter by Transaction Types
+                const { transactions } = await ledger.account.getAccountTransactions({ accountId });
+                if (queryBtnRef.current) {
+                    queryBtnRef.current.disabled = false; // Enable the button after get transaction
+                }
+                if (transactions?.length > 0) {
+                    setTransactionList(transactions)
+                }
+
+            } else {
+                if (queryBtnRef.current) {
+                    queryBtnRef.current.disabled = false; // Enable the button after get transaction
+                }
+                alert(alertErrorMessage);
+            }
+        } catch (error: any) {
+            console.log('Query button error==>>', error)
+            if (queryBtnRef.current) {
+                queryBtnRef.current.disabled = false; // Enable the button after get transaction
+            }
+            if (error?.name === 'Error') {
+                return alert('Unable to connect to the network. Please select another network or verify your internet connection.');
+            }
+        }
+    }
+
+    /**
+     * Converts a UNIX timestamp into a human-readable time difference from the current time.
+     * @param timestamp The UNIX timestamp (in milliseconds) to be converted.
+     * @returns A string representing the time difference from the current time, in the format "X days, X hours ago".
+     */
+    const convertTimestamp = (timestamp: number) => {
+        const currentTime = new Date().getTime(); // Get current time in milliseconds
+        const transactionTime = new Date(timestamp).getTime(); // Get transaction time in milliseconds
+        const difference = currentTime - transactionTime;
+
+        // Calculate days, hours, minutes, and seconds
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+
+        // Construct the result string
+        let result = "";
+        if (days > 0) {
+            result += `${days} day${days > 1 ? 's' : ''}, `;
+        }
+        if (hours > 0) {
+            result += `${hours} hour${hours > 1 ? 's' : ''}`;
+        } else {
+            result += `${minutes} minute${minutes > 1 ? 's' : ''}`;
+        }
+        return result + " ago";
+    }
+
+    // Function to convert fee from NQT to TSIGNA format
+    const convertFeeToTSIGNA = (feeNQT: any) => {
+        const feeNQTNumber = parseInt(feeNQT);
+        const feeTSIGNA = feeNQTNumber / 100000000; // Convert from NQT to TSIGNA
+        return feeTSIGNA.toFixed(2) + " TSIGNA"; // Format to display two decimal places and append TSIGNA
+    };
+
+    // Function to handle next page button click
+    const handleNextPage = () => {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
+
+    // Function to handle previous page button click
+    const handlePreviousPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
+    };
+
+    // Generate random transaction list based on the current page
+    const randomTransactionList = useMemo(() => {
+        let result: any[] = [];
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = currentPage * ITEMS_PER_PAGE;
+        for (let index = startIndex; index < Math.min(endIndex, transactionList.length); index++) {
+            result.push(transactionList[index]);
+        }
+        // Calculate total pages when transactionList changes
+        setTotalPages(Math.ceil(transactionList?.length / ITEMS_PER_PAGE));
+
+        return result;
+    }, [transactionList, currentPage]);
 
     return (
         <section className='w-full mb-0'>
@@ -236,7 +345,10 @@ export default function Details() {
                         >
                             Inscribe Button
                         </button>
-                        <button className="w-full gap-4 bg-teal-500 hover:bg-teal-700 border-teal-500 hover:border-teal-700 border-4 text-white py-1 px-2 rounded" type="button">
+                        <button className="w-full gap-4 bg-teal-500 hover:bg-teal-700 border-teal-500 hover:border-teal-700 border-4 text-white py-1 px-2 rounded" type="button"
+                            ref={queryBtnRef}
+                            onClick={handleQuery}
+                        >
                             Query Button
                         </button>
                     </div>
@@ -249,6 +361,83 @@ export default function Details() {
                     {transactionDetails && userDetails &&
                         <div>
                             <p className='text-[#208320] text-2xl '>Transaction has been success. Please note transaction Id: {transactionDetails?.transactionId}</p>
+                        </div>
+                    }
+
+                    {randomTransactionList?.length > 0 &&
+                        <div>
+                            <table className="border-slate-500 table-auto overflow-x-auto">
+                                <thead className='bg-[#f0f8ff]'>
+                                    <tr>
+                                        <th className="border border-slate-600 px-6 py-3">Transaction ID</th>
+                                        <th className="border border-slate-600 px-6 py-3">Block</th>
+                                        <th className="border border-slate-600 px-6 py-3">Timestamp</th>
+                                        <th className="border border-slate-600 px-6 py-3">Message</th>
+                                        <th className="border border-slate-600 px-6 py-3">From</th>
+                                        <th className="border border-slate-600 px-6 py-3">To</th>
+                                        <th className="border border-slate-600 px-6 py-3">Fee</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {randomTransactionList?.map((item: any, index: number) => {
+                                        // Convert the timestamp from the transaction object to Epoch time
+                                        const timestamp = ChainTime.fromChainTimestamp(item?.timestamp).getEpoch();
+                                        const formattedTime = convertTimestamp(timestamp);
+
+                                        // Get the fee in TSIGNA format from the transaction object
+                                        const feeTSIGNA = convertFeeToTSIGNA(item?.feeNQT);
+
+                                        return (
+                                            <tr className='hover:bg-slate-200' key={index}>
+                                                <td className="border border-slate-700 whitespace-nowrap text-[14px] px-2 py-2">{item?.transaction}</td>
+                                                <td className="border border-slate-700 whitespace-nowrap text-[14px] px-2 py-2">{item?.height}</td>
+                                                <td className="border border-slate-700 whitespace-nowrap text-[14px] px-2 py-2">{formattedTime}</td>
+                                                <td className="border border-slate-700 whitespace-nowrap text-[14px] px-2 py-2">
+                                                    {item?.attachment?.message ? item?.attachment?.message?.length > 15 ?
+                                                        <div className='flex flex-wrap items-center'>
+                                                            {item?.attachment?.message?.slice(0, 15) + '...'}
+                                                            <span className='text-[#208320]' title={item?.attachment?.message}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 cursor-pointer">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                                                                </svg>
+                                                            </span>
+                                                        </div>
+                                                        : item?.attachment?.message : '-'}
+                                                </td>
+                                                <td className="border border-slate-700 whitespace-nowrap text-[14px] px-2 py-2">{item?.senderRS}</td>
+                                                <td className="border border-slate-700 whitespace-nowrap text-[14px] px-2 py-2">{item?.recipientRS}</td>
+                                                <td className="border border-slate-700 whitespace-nowrap text-[14px] px-2 py-2">{feeTSIGNA}</td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                            <div className='flex flex-wrap items-center xl:justify-end lg:justify-end md:justify-start mt-2' style={{ justifyContent: 'space-between' }}>
+                                <span className='px-2 py-2'>Total <span className='font-bold'>{transactionList?.length}</span> Transactions</span>
+                                <div>
+                                    <button className='hover:bg-neutral-100 px-2 py-2' onClick={handlePreviousPage} disabled={currentPage === 1}>
+                                        Previous
+                                    </button>
+                                    <span className='ms-3 me-3'>
+                                        {Array.from({ length: totalPages }, (_, index) => {
+                                            const pageNumber = index + 1;
+                                            return (
+                                                <span
+                                                    key={pageNumber}
+                                                    className={`cursor-pointer rounded-full px-3 py-1 text-sm ${pageNumber === currentPage ? 'bg-black text-white' : 'bg-primary-100 text-primary-700'
+                                                        }`}
+                                                    onClick={() => setCurrentPage(pageNumber)}
+                                                >
+                                                    {pageNumber}
+                                                </span>
+                                            );
+                                        })}
+                                    </span>
+                                    <button className='hover:bg-neutral-100 px-2 py-2' onClick={handleNextPage} disabled={currentPage === totalPages || totalPages === 0}>
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     }
                 </div>
