@@ -1,5 +1,6 @@
 import Image from "next/image";
 import React from "react";
+import Details from "./Details";
 
 export default function Hero() {
   let tokenAddress = "0x7B8d77E6D20f8Fd22B7F2aA66C0dE68FEBf3c987";
@@ -43,6 +44,7 @@ export default function Hero() {
           />
         </div> */}
       </div>
+      <Details />
     </section>
   );
 }
