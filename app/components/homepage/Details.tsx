@@ -1,11 +1,9 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import axios from 'axios';
 import { LedgerClientFactory, Address } from '@signumjs/core';
 import { GenericExtensionWallet } from '@signumjs/wallets';
 import { ChainTime } from "@signumjs/util";
-const { generateMasterKeys } = require("@signumjs/crypto");
 
 declare global {
     interface Window {
@@ -18,7 +16,7 @@ let signumLedger: any = null;
 const recipientId = "17623970032651210826"
 let feeType = ['Minimum', 'Cheap', 'Standard', 'Priority'];
 const ITEMS_PER_PAGE = 10 // Number of items to display per page
-
+let networkName = 'Signum'
 interface Transaction {
 
 }
@@ -63,15 +61,24 @@ export default function Details() {
         propagateWalletEvent('networkChanged');
         // check if we are still within the same network
         console.log('args', args)
-        if (args.networkName === 'Signum-TESTNET') {
+        if (args.networkName === networkName) {
             if (!(window as any).wallet.connection) {
-                connectWallet();
+                networkName = args?.networkName;
+                connectWallet(args.networkName);
+            } else {
+                createLedgerClient(args.nodeHost);
+            }
+        } else if (args.networkName === 'Signum-TESTNET') {
+            if (!(window as any).wallet.connection) {
+                networkName = args?.networkName;
+                connectWallet(args.networkName);
             } else {
                 createLedgerClient(args.nodeHost);
             }
         } else {
             alert("Wallet changed to another network - Disconnect wallet");
             disconnectWallet();
+            return;
         }
     }
 
@@ -87,15 +94,14 @@ export default function Details() {
         disconnectWallet();
     }
 
-    async function connectWallet() {
+    async function connectWallet(networkName: any) {
         // if ((window as any).wallet.connection) return;
         try {
             // connecting the wallet is easy
             const connection = await (window as any).wallet.connect({
                 appName: 'SignumJS XT Wallet Demo',
-                networkName: 'Signum-TESTNET'
+                networkName: networkName
             });
-            // const connection = await (window as any).wallet.connect();
             setUserData(connection)
             if (walletListener) {
                 walletListener.unlisten();
@@ -110,9 +116,9 @@ export default function Details() {
             console.log('connection.currentNodeHost', connection.currentNodeHost)
             createLedgerClient(connection.currentNodeHost);
             propagateWalletEvent('connected');
-
+            setAlertErrorMessage('')
         } catch (error: any) {
-            console.log('connecting walleterror', error)
+            console.log('connecting walleterror:', error)
             if (error?.name === 'InvalidNetworkError') {
                 let errorMsg = 'The selected network of the wallet does not match the applications required network'
                 alert(errorMsg);
@@ -138,34 +144,31 @@ export default function Details() {
     useEffect(() => {
         const walletDetail = async () => {
             try {
-                await connectWallet();
+                await connectWallet(networkName);
             } catch (error) {
                 console.log('There was a problem with wallet connect:', error);
             }
         };
 
         walletDetail();
-    }, []);
+    }, [networkName]);
 
     useEffect(() => {
         const getUserAddress = async () => {
             try {
-
                 if (userData?.accountId) {
-                    const response = await axios.get(`https://europe3.testnet.signum.network/api?requestType=getAccount&account=${userData?.accountId}`);
-                    console.log('Account Response: ', response?.data)
-                    if (response?.data?.errorCode === 5) {
-                        setAlertErrorMessage(response?.data?.errorDescription);
-                        return;
-                    } else {
-                        setUserDetails(response?.data);
+                    const ledger = LedgerClientFactory.createClient({
+                        nodeHost: userData?.currentNodeHost,
+                    });
+                    const response = await ledger.account.getAccount({ accountId: userData?.accountId });
+                    console.log('Account Response: ', response)
+                    if (response) {
+                        setUserDetails(response);
                     }
                 }
             } catch (error: any) {
                 console.log('account error', error)
-                if (error?.name === 'AxiosError') {
-                    return alert(error?.message);
-                }
+                alert(error?.message);
             }
         };
 
@@ -199,13 +202,12 @@ export default function Details() {
                 message: userMsg,
                 messageIsText: true,
                 feePlanck: selectedFeePlanck,
-                // senderPrivateKey: signPrivateKey,
                 senderPublicKey: userDetails?.publicKey
             });
 
             const connection = await (window as any).wallet.connect({
                 appName: 'SignumJS XT Wallet Demo',
-                networkName: 'Signum-TESTNET'
+                networkName: networkName
             });
 
             const transaction = await (window as any).wallet.confirm(unsignedTransactionBytes)
@@ -218,7 +220,7 @@ export default function Details() {
                 }
             }
         } catch (error: any) {
-            console.log('Error', error)
+            console.log('handleInscribe Error: ', error)
             if (buttonRef.current) {
                 buttonRef.current.disabled = false; // Enable the button
             }
@@ -240,7 +242,7 @@ export default function Details() {
             if (alertErrorMessage === '') {
                 const accountId = Address.create(userDetails?.accountRS).getNumericId()
                 const ledger = LedgerClientFactory.createClient({
-                    nodeHost: "https://europe3.testnet.signum.network"
+                    nodeHost: userData?.currentNodeHost
                 });
                 // here we can explicitly filter by Transaction Types
                 const { transactions } = await ledger.account.getAccountTransactions({ accountId });
