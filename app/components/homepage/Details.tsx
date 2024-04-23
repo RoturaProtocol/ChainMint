@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { LedgerClientFactory, Address } from '@signumjs/core';
-import { GenericExtensionWallet } from '@signumjs/wallets';
-import { ChainTime } from "@signumjs/util";
+import { LedgerClientFactory, Address } from '@turajs/core';
+import { GenericExtensionWallet } from '@turajs/wallets';
+import { ChainTime } from "@turajs/util";
 
 declare global {
     interface Window {
@@ -16,7 +16,8 @@ let signumLedger: any = null;
 const recipientId = "17623970032651210826"
 let feeType = ['Minimum', 'Cheap', 'Standard', 'Priority'];
 const ITEMS_PER_PAGE = 10 // Number of items to display per page
-let networkName = 'Signum'
+// let networkName = 'Tura-TESTNET'
+let networkName = 'Tura'
 interface Transaction {
 
 }
@@ -97,11 +98,15 @@ export default function Details() {
     async function connectWallet(networkName: any) {
         // if ((window as any).wallet.connection) return;
         try {
+            console.log("start")
             // connecting the wallet is easy
             const connection = await (window as any).wallet.connect({
-                appName: 'SignumJS XT Wallet Demo',
+                // appName: 'SignumJS XT Wallet Demo',
+                appName: 'Tura XT Wallet',
+                // networkName: networkName
                 networkName: networkName
             });
+
             setUserData(connection)
             if (walletListener) {
                 walletListener.unlisten();
@@ -206,7 +211,7 @@ export default function Details() {
             });
 
             const connection = await (window as any).wallet.connect({
-                appName: 'SignumJS XT Wallet Demo',
+                appName: 'Tura XT Wallet',
                 networkName: networkName
             });
 
@@ -301,7 +306,8 @@ export default function Details() {
     // Function to convert fee from NQT to TSIGNA format
     const convertFeeToTSIGNA = (feeNQT: any) => {
         const feeNQTNumber = parseInt(feeNQT);
-        const feeTSIGNA = feeNQTNumber / 100000000; // Convert from NQT to TSIGNA
+        // const feeTSIGNA = feeNQTNumber / 100000000; // Convert from NQT to TSIGNA
+        const feeTSIGNA = feeNQTNumber ; // Convert from NQT to TSIGNA
         return feeTSIGNA.toFixed(2) + " TSIGNA"; // Format to display two decimal places and append TSIGNA
     };
 
