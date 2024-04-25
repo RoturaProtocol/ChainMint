@@ -308,7 +308,7 @@ export default function Details() {
         const feeNQTNumber = parseInt(feeNQT);
         const feeTSIGNA = feeNQTNumber / 10000; // Convert from NQT to TSIGNA
         // const feeTSIGNA = feeNQTNumber ; // Convert from NQT to TSIGNA
-        return feeTSIGNA.toFixed(4) + " Tura"; // Format to display two decimal places and append TSIGNA
+        return feeTSIGNA.toFixed(2) + " Tura"; // Format to display two decimal places and append TSIGNA
     };
 
     // Function to handle next page button click
