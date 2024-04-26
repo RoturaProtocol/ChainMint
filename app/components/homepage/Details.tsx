@@ -243,6 +243,8 @@ export default function Details() {
                 return alert('Permission to access the wallet was not granted. Please grant permission and try again.');
             }else if (error.toString() === 'Error: At least one of [secretPhrase, publicKey] must be specified (Code: 3)') {
                 return alert('You must have a history of sending transactions before you can use it.');
+            }else if (error.toString() === 'Error: Not enough funds (Code: 6)') {
+                return alert('Not enough funds');
             }
             else if (error.name === 'Error' && alertErrorMessage === '') {
                 return alert('Unable to connect to the network. Please select another network or verify your internet connection.');
