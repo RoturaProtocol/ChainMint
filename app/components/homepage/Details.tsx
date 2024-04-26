@@ -172,8 +172,13 @@ export default function Details() {
                     }
                 }
             } catch (error: any) {
-                console.log('account error', error)
-                alert(error?.message);
+                if(error.toString() === 'Error: Unknown account (Code: 5)'){
+                    alert("You must have a history of sending transactions before you can use it.")
+                }
+                else {
+                    console.log('account error', error)
+                    alert(error?.message);
+                }
             }
         };
 
@@ -226,12 +231,20 @@ export default function Details() {
             }
         } catch (error: any) {
             console.log('handleInscribe Error: ', error)
+            console.log(error.name)
+            console.log(error.toString())
+
+
             if (buttonRef.current) {
                 buttonRef.current.disabled = false; // Enable the button
             }
+
             if (error?.name === 'NotGrantedWalletError') {
                 return alert('Permission to access the wallet was not granted. Please grant permission and try again.');
-            } else if (error.name === 'Error' && alertErrorMessage === '') {
+            }else if (error.toString() === 'Error: At least one of [secretPhrase, publicKey] must be specified (Code: 3)') {
+                return alert('You must have a history of sending transactions before you can use it.');
+            }
+            else if (error.name === 'Error' && alertErrorMessage === '') {
                 return alert('Unable to connect to the network. Please select another network or verify your internet connection.');
             } else {
                 return alert(alertErrorMessage);
